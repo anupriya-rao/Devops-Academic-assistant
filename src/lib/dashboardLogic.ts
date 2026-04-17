@@ -3,10 +3,10 @@ import type { AttendanceData, SubjectMark, Assignment } from "@/data/dashboardDa
 export type AttendanceStatus = "safe" | "risk" | "low";
 
 export interface AttendancePrediction {
-  current: number; // current %
+  current: number;
   status: AttendanceStatus;
-  classesToAttend: number; // to reach target
-  classesCanMiss: number; // while staying at/above target
+  classesToAttend: number;
+  classesCanMiss: number;
   message: string;
 }
 
@@ -14,16 +14,12 @@ export function predictAttendance(data: AttendanceData): AttendancePrediction {
   const { total, attended, target } = data;
   const current = total === 0 ? 0 : (attended / total) * 100;
 
-  // To reach target: (attended + x) / (total + x) >= target/100
-  // x >= (target*total - 100*attended) / (100 - target)
   let classesToAttend = 0;
   if (current < target && target < 100) {
     classesToAttend = Math.ceil((target * total - 100 * attended) / (100 - target));
     if (classesToAttend < 0) classesToAttend = 0;
   }
 
-  // Classes can miss: attended / (total + y) >= target/100
-  // y <= (100*attended - target*total) / target
   let classesCanMiss = 0;
   if (current >= target && target > 0) {
     classesCanMiss = Math.floor((100 * attended - target * total) / target);
@@ -36,9 +32,11 @@ export function predictAttendance(data: AttendanceData): AttendancePrediction {
 
   let message = "";
   if (status === "safe") {
-    message = `You can miss ${classesCanMiss} more class${classesCanMiss === 1 ? "" : "es"} safely.`;
+    message = `You're doing well. You can still miss ${classesCanMiss} class${classesCanMiss === 1 ? "" : "es"} safely.`;
+  } else if (status === "risk") {
+    message = "Your attendance is close to the limit. Try not to miss upcoming classes.";
   } else {
-    message = `Attend the next ${classesToAttend} class${classesToAttend === 1 ? "" : "es"} to reach ${target}%.`;
+    message = `Your attendance is low. Attend the next ${classesToAttend} class${classesToAttend === 1 ? "" : "es"} to recover.`;
   }
 
   return {
@@ -49,6 +47,8 @@ export function predictAttendance(data: AttendanceData): AttendancePrediction {
     message,
   };
 }
+
+// ---------------- INSIGHTS ----------------
 
 export interface Insight {
   id: string;
@@ -64,66 +64,91 @@ export function generateInsights(
 ): Insight[] {
   const insights: Insight[] = [];
 
+  // 🎯 Attendance Insights
   if (attendance.status === "low") {
     insights.push({
       id: "i-att-low",
       type: "danger",
       title: "Attendance critically low",
-      body: `You're at ${attendance.current}%. Attend ${attendance.classesToAttend} classes to recover.`,
+      body: `Your attendance is at ${attendance.current}%. Start attending classes regularly to avoid issues.`,
     });
   } else if (attendance.status === "risk") {
     insights.push({
       id: "i-att-risk",
       type: "warning",
-      title: "Your attendance is risky this week",
-      body: `Just ${100 - attendance.current}% off — don't skip the next few sessions.`,
+      title: "Attendance needs attention",
+      body: "You're close to falling below the safe limit. Avoid skipping classes.",
     });
   } else {
     insights.push({
       id: "i-att-safe",
       type: "success",
       title: "Attendance on track",
-      body: `Great pace at ${attendance.current}%. Keep showing up.`,
+      body: "You're maintaining good attendance. Keep it consistent.",
     });
   }
 
-  marks.forEach((m) => {
-    if (m.midterm < 50) {
-      insights.push({
-        id: `i-marks-${m.subject}`,
-        type: "warning",
-        title: `Focus on ${m.subject} theory`,
-        body: `Mid-term score ${m.midterm}%. Review fundamentals before finals.`,
-      });
-    }
-  });
+  // 🎯 Academic Performance Insights (CLEANED)
+  const lowSubjects = marks.filter((m) => m.midterm < 50);
 
+  if (lowSubjects.length > 0) {
+    insights.push({
+      id: "i-academic",
+      type: "warning",
+      title: "Academic performance needs focus",
+      body: "Some subjects need more attention. Revise key concepts and stay consistent.",
+    });
+  } else {
+    insights.push({
+      id: "i-academic-good",
+      type: "success",
+      title: "Good academic performance",
+      body: "You're performing well across subjects. Keep up the momentum.",
+    });
+  }
+
+  // 🎯 Assignments - High Priority
   const pendingHigh = assignments.filter(
     (a) => a.status === "pending" && a.priority === "high"
   );
+
   if (pendingHigh.length) {
     insights.push({
       id: "i-assign-high",
       type: "info",
-      title: `${pendingHigh.length} high-priority assignment${pendingHigh.length === 1 ? "" : "s"} pending`,
-      body: `Tackle "${pendingHigh[0].title}" first — it's due soonest.`,
+      title: "High-priority tasks pending",
+      body: "You have important assignments pending. Try to complete them soon.",
     });
   }
 
+  // 🎯 Overdue Assignments
   const overdue = assignments.filter(
     (a) => a.status === "pending" && new Date(a.dueDate).getTime() < Date.now()
   );
+
   if (overdue.length) {
     insights.push({
       id: "i-overdue",
       type: "danger",
       title: "Overdue work detected",
-      body: `${overdue.length} assignment${overdue.length === 1 ? " is" : "s are"} past due. Submit ASAP.`,
+      body: "Some assignments are past their deadline. Submit them as soon as possible.",
+    });
+  }
+
+  // 🎯 Motivation Insight (NEW ✨)
+  if (insights.length < 3) {
+    insights.push({
+      id: "i-motivation",
+      type: "info",
+      title: "Stay consistent",
+      body: "Small daily efforts lead to big results. Keep going!",
     });
   }
 
   return insights.slice(0, 5);
 }
+
+// ---------------- COUNTDOWN ----------------
 
 export function formatCountdown(iso: string): {
   text: string;
@@ -137,7 +162,9 @@ export function formatCountdown(iso: string): {
     if (absDays === 0) return { text: `Overdue by ${absHours}h`, tone: "danger" };
     return { text: `Overdue by ${absDays}d`, tone: "muted" };
   }
+
   if (absHours < 24) return { text: `Due in ${absHours}h`, tone: "danger" };
   if (absDays <= 2) return { text: `Due in ${absDays}d`, tone: "warning" };
+
   return { text: `Due in ${absDays}d`, tone: "success" };
 }

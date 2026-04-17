@@ -1,63 +1,80 @@
-import { BookOpenCheck } from "lucide-react";
-import type { SubjectMark } from "@/data/dashboardData";
+import { BarChart2, Table2 } from "lucide-react";
 
-interface Props {
-  marks: SubjectMark[];
+interface MarkEntry {
+  label: string;
+  obtained: number | null;
+  total: number;
+  note?: string;
 }
 
-const scoreTone = (score: number) => {
-  if (score >= 75) return { bar: "bg-gradient-success", text: "text-success", label: "Excellent" };
-  if (score >= 60) return { bar: "bg-gradient-primary", text: "text-primary", label: "Good" };
-  if (score >= 50) return { bar: "bg-gradient-warning", text: "text-warning", label: "Average" };
-  return { bar: "bg-gradient-danger", text: "text-danger", label: "Improve" };
-};
+interface Props {
+  entries?: MarkEntry[];
+}
 
-export const MarksCard = ({ marks }: Props) => {
-  const avg = Math.round(marks.reduce((s, m) => s + m.score, 0) / marks.length);
+// ✅ You can edit or keep null
+const defaultEntries: MarkEntry[] = [
+  {
+    label: "Mid Term Marks",
+    obtained: 18, // ← change or keep null
+    total: 30,
+    note: "Will be scaled internally",
+  },
+  { label: "End Sem Marks",   obtained: null, total: 60 },
+  { label: "Practical Marks", obtained: 12, total: 15 },
+  { label: "CAP Marks",       obtained: 8, total: 10 },
+];
+
+export const MarksCard = ({ entries = defaultEntries }: Props) => {
+  const totalObtained = entries.reduce((s, e) => s + (e.obtained ?? 0), 0);
+  const grandTotal    = entries.reduce((s, e) => s + e.total, 0);
 
   return (
-    <article className="rounded-3xl bg-card border border-border p-6 shadow-card hover-lift animate-fade-in-up">
-      <div className="flex items-start justify-between gap-3 mb-5">
-        <div className="flex items-center gap-3">
-          <div className="h-11 w-11 rounded-2xl bg-primary-soft grid place-items-center">
-            <BookOpenCheck className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <h2 className="font-display text-lg font-bold text-foreground">Marks Overview</h2>
-            <p className="text-xs text-muted-foreground">Average across subjects</p>
-          </div>
-        </div>
-        <div className="text-right">
-          <p className="font-display text-3xl font-bold text-primary tabular-nums leading-none">{avg}%</p>
-          <p className="text-[11px] text-muted-foreground mt-1">overall avg</p>
-        </div>
+    <article className="rounded-2xl border border-border bg-white shadow-card overflow-hidden animate-fade-in-up hover-lift">
+      
+      {/* 🔥 PURPLE GRADIENT HEADER */}
+      <div className="flex items-center gap-2.5 bg-gradient-primary px-5 py-3.5">
+        <BarChart2 className="h-4 w-4 text-primary-foreground" />
+        <h2 className="text-sm font-semibold text-primary-foreground">
+          Mid / End Sem Marks
+        </h2>
       </div>
 
-      <ul className="space-y-4">
-        {marks.map((m) => {
-          const tone = scoreTone(m.score);
-          return (
-            <li key={m.subject}>
-              <div className="flex items-center justify-between mb-1.5">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-sm font-semibold text-foreground truncate">{m.subject}</span>
-                  <span className={`text-[10px] font-bold uppercase tracking-wider ${tone.text}`}>
-                    {tone.label}
-                  </span>
-                </div>
-                <span className="text-sm font-bold text-foreground tabular-nums">{m.score}%</span>
-              </div>
-              <div className="h-2 rounded-full bg-muted overflow-hidden">
-                <div
-                  className={`h-full ${tone.bar} transition-spring rounded-full`}
-                  style={{ width: `${m.score}%` }}
-                />
-              </div>
-              <p className="text-[11px] text-muted-foreground mt-1">Mid-term: {m.midterm}%</p>
-            </li>
-          );
-        })}
+      {/* Rows */}
+      <ul className="divide-y divide-border">
+        {entries.map((entry) => (
+          <li
+            key={entry.label}
+            className="flex items-center justify-between gap-4 px-5 py-4"
+          >
+            <div className="min-w-0">
+              <span className="text-sm text-foreground">{entry.label}</span>
+              {entry.note && (
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {entry.note}
+                </p>
+              )}
+            </div>
+
+            <span className="shrink-0 rounded-md border border-border bg-muted px-3 py-1 text-xs text-muted-foreground tabular-nums min-w-[64px] text-center">
+              {entry.obtained !== null ? entry.obtained : "–"} / {entry.total}
+            </span>
+          </li>
+        ))}
       </ul>
+
+      {/* Total */}
+      <div className="flex items-center justify-between gap-4 bg-muted/50 px-5 py-4 border-t border-border">
+        <div className="flex items-center gap-2">
+          <Table2 className="h-4 w-4 text-primary" />
+          <span className="text-sm font-semibold text-primary">
+            Total Marks
+          </span>
+        </div>
+
+        <span className="text-sm font-bold text-primary tabular-nums">
+          {totalObtained} / {grandTotal}
+        </span>
+      </div>
     </article>
   );
 };

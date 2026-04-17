@@ -6,6 +6,8 @@ import { AttendanceCard } from "@/components/dashboard/AttendanceCard";
 import { AssignmentsCard } from "@/components/dashboard/AssignmentsCard";
 import { MarksCard } from "@/components/dashboard/MarksCard";
 import { InsightsCard } from "@/components/dashboard/InsightsCard";
+import { FeedbackCard } from "@/components/dashboard/FeedbackCard"; // ✅ NEW
+
 import {
   initialAlerts,
   initialAssignments,
@@ -15,6 +17,7 @@ import {
   type Assignment,
   type AttendanceData,
 } from "@/data/dashboardData";
+
 import { generateInsights, predictAttendance } from "@/lib/dashboardLogic";
 
 const Index = () => {
@@ -24,6 +27,7 @@ const Index = () => {
   const [marks] = useState(initialMarks);
 
   const prediction = useMemo(() => predictAttendance(attendance), [attendance]);
+
   const insights = useMemo(
     () => generateInsights(prediction, marks, assignments),
     [prediction, marks, assignments]
@@ -46,19 +50,27 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-10">
+        
+        {/* Header */}
         <DashboardHeader />
 
         <main className="space-y-6 md:space-y-8">
+
+          {/* Top Summary */}
           <TodayStatusCard
             classesToday={5}
             pendingAssignments={pendingCount}
             alertsCount={alerts.length}
-            streak={12}
+            streak={4} // ✅ FIXED (realistic)
           />
 
+          {/* Alerts */}
           <section aria-label="Smart alerts">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="font-display text-lg font-bold text-foreground">Smart Alerts</h2>
+              <h2 className="font-display text-lg font-bold text-foreground">
+                Smart Alerts
+              </h2>
+
               {alerts.length > 0 && (
                 <button
                   onClick={() => setAlerts([])}
@@ -68,26 +80,40 @@ const Index = () => {
                 </button>
               )}
             </div>
+
             <AlertsPanel alerts={alerts} onDismiss={dismissAlert} />
           </section>
 
+          {/* MAIN GRID */}
           <section className="grid gap-6 lg:grid-cols-3">
-            <div className="lg:col-span-1">
+
+            {/* LEFT SIDE */}
+            <div className="lg:col-span-1 space-y-6">
               <AttendanceCard data={attendance} onChange={setAttendance} />
+              <FeedbackCard /> {/* ✅ ADDED */}
             </div>
+
+            {/* RIGHT SIDE */}
             <div className="lg:col-span-2">
-              <AssignmentsCard assignments={assignments} onToggle={toggleAssignment} />
+              <AssignmentsCard
+                assignments={assignments}
+                onToggle={toggleAssignment}
+              />
             </div>
+
           </section>
 
+          {/* Bottom Section */}
           <section className="grid gap-6 lg:grid-cols-2">
             <MarksCard marks={marks} />
             <InsightsCard insights={insights} />
           </section>
 
+          {/* Footer */}
           <footer className="pt-4 pb-2 text-center text-xs text-muted-foreground">
             StudyOps · Your smart academic assistant
           </footer>
+
         </main>
       </div>
     </div>

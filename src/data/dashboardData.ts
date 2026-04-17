@@ -29,8 +29,8 @@ export interface AttendanceData {
 }
 
 export const initialAttendance: AttendanceData = {
-  total: 60,
-  attended: 42,
+  total: 11,
+  attended: 5,
   target: 75,
 };
 
